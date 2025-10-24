@@ -168,11 +168,17 @@ function process_event(time::Float64, state::JacksonQueueNetworkState, end_of_se
 
     # -1 signifies we leave
     possible_visits = [-1]
+
+    # For each queue, note all the possible (all of them, maybe) locations
+    # we can go to
     for queue in 1:state.params.L
         push!(possible_visits, queue)
     end
 
+    # As per the spec
     leave_prob = 1 - stay_prob
+
+    # Make a list of all the weighted probabilities of going to i, j
     probabilities = [leave_prob]
     for queue in 1:state.params.L
         push!(probabilities, state.params.P[i, queue])
@@ -181,9 +187,11 @@ function process_event(time::Float64, state::JacksonQueueNetworkState, end_of_se
     # Where we decided to go
     j = sample(possible_visits, Weights(probabilities))
 
-    # If we didnt leave
+    # If we didnt leave, then we went to the sampled location
     if j != -1
         state.queues[j] += 1
+
+        # If the queue wasn't busy before, we need to make it busy
         if state.queues[j] == 1
             push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(j, state.mod_version), time + next_service_duration(state, j)))
         end
